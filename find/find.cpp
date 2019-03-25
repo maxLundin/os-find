@@ -123,6 +123,10 @@ int main(int argc, char *argv[]) {
     while (!queue.empty()) {
         auto dir = queue.front();
         queue.pop();
+        if (dir.first == nullptr) {
+            std::cerr << "access denied: " << dir.second << std::endl;
+            continue;
+        }
         dirent *entry = readdir(dir.first);
         while (entry != nullptr) {
             if (DT_DIR == entry->d_type) {

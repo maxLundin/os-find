@@ -1,0 +1,1 @@
+add_library(filter_lib STATIC filesize_attr.h filter.h)

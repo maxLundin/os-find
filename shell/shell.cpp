@@ -39,23 +39,38 @@ namespace shell_OS {
 
     class controller {
     public:
-        controller() {
-            launcher::launch({"stty", "-echo"}, false);
-            launcher::launch({"stty", "raw"}, false);
-            launcher::launch({"setterm", "-cursor", "off"}, false);
+
+        explicit controller(const char **envp) {
+            while (*envp) {
+                tmp_envp.push_back(*envp);
+                ++envp;
+            }
+        }
+
+        void lock() {
+            launcher::launch({"/bin/stty", "-echo"}, tmp_envp.data(), false);
+            launcher::launch({"/bin/stty", "raw"}, tmp_envp.data(), false);
+            launcher::launch({"/usr/bin/setterm", "-cursor", "off"}, tmp_envp.data(), false);
+        }
+
+
+        void unlock() {
+            launcher::launch({"/bin/stty", "echo"}, tmp_envp.data(), false);
+            launcher::launch({"/bin/stty", "cooked"}, tmp_envp.data(), false);
+            launcher::launch({"/usr/bin/setterm", "-cursor", "on"}, tmp_envp.data(), false);
         }
 
         ~controller() {
-            launcher::launch({"stty", "echo"}, false);
-            launcher::launch({"stty", "cooked"}, false);
-            launcher::launch({"setterm", "-cursor", "on"}, false);
+            unlock();
         }
+
+        std::vector<const char *> tmp_envp;
     };
 }
 
 using shell_OS::cleanscr;
 
-int main(int args, char *argv[]) {
+int main(int args, char *argv[], const char *envp[]) {
     const std::string up = {27, 91, 65};
     const std::string down = {27, 91, 66};
     const std::string right = {27, 91, 67};
@@ -72,7 +87,8 @@ int main(int args, char *argv[]) {
         cleanscr(inputString.length());
         std::cout << inputString << std::flush;
         {
-            shell_OS::controller controller1{};
+            shell_OS::controller controller1(envp);
+            controller1.lock();
             cursor_posititon = 0;
             while (true) {
                 cleanscr(inputString.length());
@@ -172,11 +188,11 @@ int main(int args, char *argv[]) {
             std::cout << "\rexiting..." << std::endl;
             exit(0);
         }
-        auto args1 = shell_OS::parseArgs(inputString);
+        std::vector<char *> args1 = shell_OS::parseArgs(inputString);
 
-        launcher::launchActivity(args1);
+        launcher::launchActivity(args1, envp);
 
-        for (char *str : args1) {
+        for (const char *str : args1) {
             delete[] str;
         }
 

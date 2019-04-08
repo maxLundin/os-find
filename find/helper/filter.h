@@ -1,3 +1,7 @@
+#include <utility>
+
+#include <utility>
+
 //
 // Created by maxlundin on 23/03/19.
 //
@@ -20,6 +24,20 @@ struct file_check_argumets {
     int64_t nlink_number = -1;
     int8_t mode = -2;
     std::string exec_file = "";
+
+    file_check_argumets() = default;
+
+    file_check_argumets(std::string name,
+                        const size_t size,
+                        const int inode_number,
+                        const int64_t nlink_number,
+                        const int8_t mode,
+                        std::string exec_file = "") : name(std::move(name)),
+                                                      size(size),
+                                                      inode_number(inode_number),
+                                                      nlink_number(nlink_number),
+                                                      mode(mode),
+                                                      exec_file(std::move(exec_file)) {}
 };
 
 
@@ -28,7 +46,7 @@ public:
     filter_t(const std::string &file, struct stat file_stat) : filename(file), file_stat(file_stat) {
     }
 
-    bool filter_all(const file_check_argumets args) {
+    bool filter_all(const file_check_argumets &args, const char **m_envp) {
         bool result = filter_inode(args.inode_number)
                       && filter_name(args.name)
                       && filter_size(args.size, args.mode)
@@ -37,7 +55,7 @@ public:
             std::vector<const char *> arguments;
             arguments.push_back(args.exec_file.c_str());
             arguments.push_back(filename.c_str());
-            launcher::launch(arguments, false);
+            launcher::launch(arguments, m_envp, false);
         }
         return result;
     }
@@ -45,11 +63,9 @@ public:
     bool filter_all(const int inode_number,
                     const std::string &name,
                     const size_t size, const int8_t mode,
-                    const int64_t nlink_number) {
-        return filter_inode(inode_number)
-               && filter_name(name)
-               && filter_size(size, mode)
-               && filter_nlinks(nlink_number);
+                    const int64_t nlink_number, const char **m_envp) {
+        file_check_argumets checker(name, size, inode_number, nlink_number, mode);
+        return filter_all(checker, m_envp);
     }
 
     bool filter_nlinks(const int64_t number) {

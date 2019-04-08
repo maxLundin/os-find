@@ -98,7 +98,7 @@ struct stat get_info(const std::string &file_name) {
     return file_stats;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[], const char **envp) {
     if (argc < 2) {
         std::cerr << "No arguments provided" << std::endl;
         return 1;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
                 std::string filename = dir.second + '/' + entry->d_name;
 
                 filter_t filter(filename, get_info(filename));
-                if (filter.filter_all(arg) && arg.exec_file.empty()) {
+                if (filter.filter_all(arg, envp) && arg.exec_file.empty()) {
                     std::cout << filename << std::endl;
                 }
 

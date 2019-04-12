@@ -85,6 +85,8 @@ file_check_argumets parse_arguments(const int args, char *argv[]) {
             res.nlink_number = stoi(arg);
         } else if (strcmp(argv[pos_arg], "-exec") == 0) {
             res.exec_file = std::string(argv[++pos_arg]);
+        } else {
+            throw std::runtime_error(std::string("Unknown predicate: ").append(argv[pos_arg]).append("\n"));
         }
         ++pos_arg;
     }
@@ -94,7 +96,11 @@ file_check_argumets parse_arguments(const int args, char *argv[]) {
 
 struct stat get_info(const std::string &file_name) {
     struct stat file_stats{};
-    stat(file_name.c_str(), &file_stats);
+    if (-1 == stat(file_name.c_str(), &file_stats)) {
+        throw std::runtime_error(
+                std::string("Error getting stat from file: ").append(file_name).append("\nError: ").append(
+                        strerror(errno)).append("\n"));
+    }
     return file_stats;
 }
 
@@ -124,27 +130,26 @@ int main(int argc, char *argv[], const char **envp) {
         auto dir = queue.front();
         queue.pop();
         if (dir.first == nullptr) {
-            std::cerr << "access denied: " << dir.second << std::endl;
             continue;
         }
         dirent *entry = readdir(dir.first);
         while (entry != nullptr) {
             if (DT_DIR == entry->d_type) {
-                if ((strncmp(entry->d_name, ".", PATH_MAX) == 0) ||
-                    (strncmp(entry->d_name, "..", PATH_MAX) == 0)) {
-                    entry = readdir(dir.first);
-                } else {
+                if (strncmp(entry->d_name, ".", PATH_MAX) != 0 && strncmp(entry->d_name, "..", PATH_MAX) != 0) {
                     std::string newDIR = dir.second + "/" + entry->d_name;
                     queue.push(std::make_pair(opendir(newDIR.c_str()), newDIR));
                 }
             } else if (DT_REG == entry->d_type) {
                 std::string filename = dir.second + '/' + entry->d_name;
 
-                filter_t filter(filename, get_info(filename));
-                if (filter.filter_all(arg, envp) && arg.exec_file.empty()) {
-                    std::cout << filename << std::endl;
+                try {
+                    filter_t filter(filename, get_info(filename));
+                    if (filter.filter_all(arg, envp) && arg.exec_file.empty()) {
+                        std::cout << filename << std::endl;
+                    }
+                } catch (std::runtime_error &e) {
+                    std::cerr << e.what() << std::endl;
                 }
-
             }
             entry = readdir(dir.first);
         }

@@ -43,6 +43,7 @@ struct file_check_argumets {
 
 class filter_t {
 public:
+
     filter_t(const std::string &file, struct stat file_stat) : filename(file), file_stat(file_stat) {
     }
 
